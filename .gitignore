@@ -16,8 +16,6 @@
 *.stdout
 
 # Backup Files
-*.old
-*.old2
 *~
 *.bak
 
