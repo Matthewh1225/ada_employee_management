@@ -1,18 +1,15 @@
--- pools.ads
--- Free list management for employee storage pool
+-- AvailableEmployeeList.ads
+-- Free list management for employee storage available list
 -- Vehicles are now heap-allocated using 'new' (inheritance model)
 
 with Types; use Types;
 
-package Pools is
+package AvailableEmployeeList is
 
-   -- Initialize employee pool (set up free list)
    procedure Initialize;
-
-   -- Allocate a new employee from the pool
+   --  new employee from the available list
    function Allocate_Employee return Employee_Index_Number;
-
-   -- Free an employee back to the pool
+   -- Free employee back to available list
    procedure Free_Employee (Index : Employee_Index_Number);
 
-end Pools;
+end AvailableEmployeeList;

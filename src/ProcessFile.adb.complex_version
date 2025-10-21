@@ -1,0 +1,521 @@
+-- ProcessFile.adb
+-- Implementation of file reading and tokenization
+-- This package reads the Cars.txt file word-by-word and converts them to proper types
+--
+-- FILE FORMAT EXPLANATION:
+-- The input file (Cars.txt) contains employee and vehicle information in this format:
+--
+-- Employee line: Name JobType Age [Manufacturer Model Count Color]
+--   Example: "Sable Accountant 26 GMC Pickup 2 White"
+--            ├─name─┤├──job──┤├age┤├manufacturer┤├model┤├cnt┤├color┤
+--
+-- Vehicle-only line: Manufacturer Model Count Color
+--   Example: "Dodge Ram 5 Black"  (additional vehicle for previous employee)
+--
+-- Multiple vehicles: Employee can have multiple vehicle lines following their employee line
+--
+-- PARSING STRATEGY:
+-- 1. Read first token (could be employee name OR vehicle manufacturer)
+-- 2. Read second token and try to parse as Job Type
+--    - If it's a valid job → EMPLOYEE LINE, read age and optional vehicle
+--    - If NOT a valid job → VEHICLE LINE, parse as manufacturer/model/count/color
+-- 3. For employee lines, check if they have a vehicle (next token is manufacturer)
+-- 4. Keep reading vehicle lines until next employee name is encountered
+
+with Ada.Text_IO;             use Ada.Text_IO;
+with Ada.Strings;             use Ada.Strings;
+with Ada.Strings.Fixed;       use Ada.Strings.Fixed;
+with Ada.Characters.Handling; use Ada.Characters.Handling;
+with Ada.Characters.Latin_1;  use Ada.Characters.Latin_1;
+
+package body ProcessFile is
+
+   -- Maximum length of a single word (token) we can read from file
+   Max_Token_Length : constant := 40;
+
+   -- A token is a single word from the file (like "Sable" or "Manager" or "43")
+   type Token_Buffer is record
+      Length : Natural range 0 .. Max_Token_Length := 0;  -- How many characters in this word
+      Data   : String (1 .. Max_Token_Length)      := (others => ' ');  -- The actual characters
+   end record;
+
+   -- Convert a token buffer to a regular string
+   function Token_To_String (Value : Token_Buffer) return String is
+   begin
+      if Value.Length = 0 then
+         return "";  -- Empty token
+      else
+         return Value.Data (1 .. Value.Length);  -- Return just the used part
+      end if;
+   end Token_To_String;
+
+   -- Check if a character is whitespace (space, tab, newline)
+   function Is_Separator (C : Character) return Boolean is
+     (C = ' ' or else C = HT or else C = CR or else C = LF);
+
+   -- Read one word (token) from the file
+   -- This skips whitespace and reads characters until the next whitespace
+   procedure Read_Token
+     (File : in Ada.Text_IO.File_Type;Token : out Token_Buffer;End_Reached : out Boolean) is Ch: Character; Reached_Line_End : Boolean := False;
+   begin
+      Token.Length := 0;  -- Start with empty token
+      
+      -- Skip any leading whitespace
+      loop
+         if Ada.Text_IO.End_Of_File (File) then
+            End_Reached := True;  -- No more words in file
+            return;
+         end if;
+
+         Ada.Text_IO.Get (File, Ch);  -- Read one character
+
+         exit when not Is_Separator (Ch);  -- Stop when we find a non-whitespace character
+      end loop;
+
+      -- Now Ch contains the first character of our word
+      Token.Length := 1;
+      Token.Data (1) := Ch;
+
+      -- Keep reading characters until we hit whitespace or end of line
+      loop
+         exit when Ada.Text_IO.End_Of_File (File);
+
+         declare
+            Next        : Character;
+            End_Of_Line : Boolean;
+         begin
+            Ada.Text_IO.Look_Ahead (File, Next, End_Of_Line);  -- Peek at next character without removing it
+
+            if End_Of_Line then
+               Reached_Line_End := True;
+               exit;  -- Stop at end of line
+            elsif Is_Separator (Next) then
+               exit;  -- Stop at whitespace
+            else
+               Ada.Text_IO.Get (File, Next);  -- Actually read the character now
+
+               if Token.Length < Max_Token_Length then
+                  Token.Length := Token.Length + 1;  -- Add to our word
+                  Token.Data (Token.Length) := Next;
+               end if;
+            end if;
+         end;
+      end loop;
+
+      -- If we reached end of line, skip to next line for future reads
+      -- This prepares the file pointer for the next Read_Token call
+      if Reached_Line_End and then not Ada.Text_IO.End_Of_File (File) then
+         Ada.Text_IO.Skip_Line (File);
+      end if;
+
+      End_Reached := False;  -- Successfully read a token
+   end Read_Token;
+
+   -- Remove leading and trailing spaces from a string
+   function Normalize (Text : String) return String is
+      Trimmed : constant String := Trim (Text, Both);
+   begin
+      return Trimmed;
+   end Normalize;
+
+   -- Convert string to uppercase and trim spaces (for case-insensitive comparison)
+   function To_Upper_Clean (Text : String) return String is
+      Clean : constant String := Normalize (Text);
+   begin
+      return To_Upper (Clean);
+   end To_Upper_Clean;
+
+   -- Convert a string like "Manager" to the Job_Type enumeration value Manager
+   function To_Job (Job_String : String) return Job_Type is
+      Value : constant String := To_Upper_Clean (Job_String);
+   begin
+      -- Check all possible job types
+      if Value = "MANAGER" then
+         return Manager;
+      elsif Value = "SALES" then
+         return Sales;
+      elsif Value = "ANALYSIST" then
+         return Analysist;
+      elsif Value = "PROGRAMMER" then
+         return Programmer;
+      elsif Value = "ACCOUNTANT" then
+         return Accountant;
+      else
+         raise Constraint_Error with "Invalid job type: " & Job_String;
+      end if;
+   end To_Job;
+
+   -- Convert a string like "Ford" to the Manufacturer enumeration value Ford
+   function To_Manufacturer (Text : String) return Manufacturer is
+      Value : constant String := To_Upper_Clean (Text);
+   begin
+      -- Check all possible manufacturers
+      if Value = "FORD" then
+         return Ford;
+      elsif Value = "CHEVROLET" then
+         return Chevrolet;
+      elsif Value = "DODGE" then
+         return Dodge;
+      elsif Value = "GMC" then
+         return GMC;
+      elsif Value = "GENERALDYNAMICS" then
+         return GeneralDynamics;
+      elsif Value = "GRUMMAN" then
+         return Grumman;
+      elsif Value = "LOCKHEED" then
+         return Lockheed;
+      elsif Value = "BOEING" then
+         return Boeing;
+      elsif Value = "NAVALGROUP" then
+         return NavalGroup;
+      elsif Value = "THYSSENKRUPP" then
+         return ThyssenKrupp;
+      elsif Value = "HARLEY" then
+         return Harley;
+      elsif Value = "HONDA" then
+         return Honda;
+      elsif Value = "YAMAHA" then
+         return Yamaha;
+      elsif Value = "DUCATI" then
+         return Ducati;
+      else
+         raise Constraint_Error with "Invalid manufacturer: " & Text;
+      end if;
+   end To_Manufacturer;
+
+   -- Remove all occurrences of a specific character from a string
+   -- For example: Remove_Character("F-16", '-') returns "F16"
+   function Remove_Character (Text : String; Character_To_Remove : Character) return String is
+      Result : String (1 .. Text'Length);
+      Length : Natural := 0;
+   begin
+      -- Copy all characters except the one we want to remove
+      for Pos in Text'Range loop
+         if Text (Pos) /= Character_To_Remove then
+            Length := Length + 1;
+            Result (Length) := Text (Pos);
+         end if;
+      end loop;
+
+      if Length = 0 then
+         return "";  -- String was all the removed character
+      else
+         return Result (1 .. Length);  -- Return the shortened string
+      end if;
+   end Remove_Character;
+
+   -- Convert a string like "F-16" or "Raptor" to the Model_Type enumeration value
+   function To_Model (Text : String) return Model_Type is
+      Raw      : constant String := To_Upper_Clean (Text);
+      Adjusted : constant String := Remove_Character (Raw, '-');  -- Remove hyphens (F-16 becomes F16)
+   begin
+      -- Check all possible model types
+      if Adjusted = "EXPEDITION" then
+         return Expedition;
+      elsif Adjusted = "RAPTOR" then
+         return Raptor;
+      elsif Adjusted = "CAMARO" then
+         return Camaro;
+      elsif Adjusted = "PICKUP" then
+         return Pickup;
+      elsif Adjusted = "STINGRAY" then
+         return Stingray;
+      elsif Adjusted = "CHARGER" then
+         return Charger;
+      elsif Adjusted = "RAM" then
+         return Ram;
+      elsif Adjusted = "DEVIL" then
+         return Devil;
+      elsif Adjusted = "F16" then
+         return F16;
+      elsif Adjusted = "COMMERCIAL" then
+         return Commercial;
+      elsif Adjusted = "F35" then
+         return F35;
+      elsif Adjusted = "747" or else Adjusted = "B747" then
+         return B747;
+      elsif Adjusted = "VIRGINIA" then
+         return Virginia;
+      elsif Adjusted = "TYPHOON" then
+         return Typhoon;
+      elsif Adjusted = "TRIDENT" then
+         return Trident;
+      elsif Adjusted = "SPORTSTER" then
+         return Sportster;
+      elsif Adjusted = "SHADOW" then
+         return Shadow;
+      elsif Adjusted = "R1" then
+         return R1;
+      elsif Adjusted = "PANIGALE" then
+         return Panigale;
+      else
+         raise Constraint_Error with "Invalid model: " & Text;
+      end if;
+   end To_Model;
+
+   -- Convert a string like "Blue" to the Color_Type enumeration value Blue
+   function To_Color (Text : String) return Color_Type is
+      Value : constant String := To_Upper_Clean (Text);
+   begin
+      -- Check all possible colors
+      if Value = "BLUE" then
+         return Blue;
+      elsif Value = "RED" then
+         return Red;
+      elsif Value = "WHITE" then
+         return White;
+      elsif Value = "ORANGE" then
+         return Orange;
+      elsif Value = "BLACK" then
+         return Black;
+      elsif Value = "SILVER" then
+         return Silver;
+      elsif Value = "CAMO" then
+         return Camo;
+      elsif Value = "YELLOW" then
+         return Yellow;
+      elsif Value = "GREEN" then
+         return Green;
+      else
+         raise Constraint_Error with "Invalid color: " & Text;
+      end if;
+   end To_Color;
+
+   -- Figure out what kind of vehicle based on who makes it
+   -- For example: Ford makes cars, Boeing makes planes
+   function Determine_Category (Make : Manufacturer) return Vehicle_Kind is
+   begin
+      case Make is
+         when Ford | Chevrolet | Dodge | GMC =>
+            return Car_Type;  -- These manufacturers make cars
+         when GeneralDynamics | Grumman | Lockheed | Boeing =>
+            return Plane_Type;  -- These manufacturers make planes
+         when NavalGroup | ThyssenKrupp =>
+            return Submarine_Type;  -- These manufacturers make submarines
+         when Harley | Honda | Yamaha | Ducati =>
+            return Motorcycle_Type;  -- These manufacturers make motorcycles
+         when None_Make =>
+            return None_Vehicle;  -- Unknown manufacturer
+      end case;
+   end Determine_Category;
+
+   -- Convert a string like "25" to the natural number 25
+   function To_Natural (Text : String) return Natural is
+      Value : Integer;
+   begin
+      Value := Integer'Value (Normalize (Text));  -- Built-in Ada conversion
+      if Value < 0 then
+         raise Constraint_Error with "Negative number encountered: " & Text;
+      end if;
+      return Natural (Value);
+   end To_Natural;
+
+   -- Copy a string into a fixed-length name buffer (for employee names)
+   procedure Set_Name (Target : out Name_Buffer; Source : String) is
+      Clean    : constant String := Normalize (Source);
+      Length   : constant Natural := Clean'Length;
+      Actual   : constant Natural := Natural'Min (Length, Max_Name_Length);
+   begin
+      Target.Length := Actual;  -- Store how many characters we're using
+
+      -- Copy the characters
+      if Actual > 0 then
+         for Index in 1 .. Actual loop
+            Target.Data (Index) := Clean (Clean'First + Index - 1);
+         end loop;
+      end if;
+
+      -- Fill the rest with spaces
+      if Actual < Max_Name_Length then
+         for Index in Actual + 1 .. Max_Name_Length loop
+            Target.Data (Index) := ' ';
+         end loop;
+      end if;
+   end Set_Name;
+
+   -- Convert a name buffer back to a regular string
+   function To_String (Value : Name_Buffer) return String is
+   begin
+      if Value.Length = 0 then
+         return "";  -- Empty name
+      else
+         return Value.Data (1 .. Value.Length);  -- Return just the used part
+      end if;
+   end To_String;
+
+   -- Main procedure: Read the entire file and call Process_Employee for each line
+   -- This reads Cars.txt and parses each employee and their vehicles
+   procedure Read_Employees
+     (File_Name : String;
+      Process_Employee :
+        not null access procedure (Current_Employee : in Employee_Record)) is
+
+      File_Handle   : Ada.Text_IO.File_Type;  -- The file we're reading
+      Token         : Token_Buffer;  -- Current word we just read
+      End_File      : Boolean;  -- Have we reached the end?
+      Pending_Token : Token_Buffer;  -- Sometimes we read ahead one token
+      Has_Pending   : Boolean := False;  -- Do we have a token waiting?
+
+      -- Helper function to get next token (from pending or from file)
+      procedure Get_Token (Value : out Token_Buffer; End_Reached : out Boolean) is
+      begin
+         if Has_Pending then
+            -- Use the token we read ahead earlier
+            Value      := Pending_Token;
+            Has_Pending := False;
+            End_Reached := False;
+         else
+            -- Read a fresh token from the file
+            Read_Token (File_Handle, Value, End_Reached);
+         end if;
+      end Get_Token;
+   begin
+      -- Open the file for reading
+      Ada.Text_IO.Open (File_Handle, Ada.Text_IO.In_File, File_Name);
+
+      -- Main reading loop: keep reading until end of file
+      loop
+         Get_Token (Token, End_File);  -- Read first token
+         exit when End_File;
+
+         -- Each iteration processes one employee or vehicle line
+         declare
+            Name_Text   : constant String := Token_To_String (Token);  -- First word of line
+            Record_Item : Employee_Record;  -- Build up employee/vehicle data here
+            Completed   : Boolean := False;  -- Did we finish this record?
+         begin
+            -- First token could be an employee name or a vehicle manufacturer
+            Set_Name (Record_Item.Name, Name_Text);
+
+            Get_Token (Token, End_File);  -- Read second token
+            exit when End_File;
+            declare
+               Job_Text : constant String := Token_To_String (Token);  -- Second word
+            begin
+               -- Try to parse second token as a Job Type
+               -- If it's a valid job, this is an EMPLOYEE line (Name Job Age ...)
+               -- If not, this is a VEHICLE line (Manufacturer Model Count Color)
+               begin
+                  Record_Item.Job := To_Job (Job_Text);  -- Success! It's an employee
+               exception
+                  when Constraint_Error =>
+                     -- Job parsing failed, so this must be a VEHICLE line
+                     -- Example: "Ford Raptor 4 Red" (Manufacturer Model Count Color)
+                     Completed := True;
+                     Record_Item.Job := None;  -- No job means this is a vehicle
+                     Record_Item.Age := 0;
+
+                     -- Name_Text is actually the manufacturer (Ford, Chevrolet, etc.)
+                     begin
+                        Record_Item.Vehicle_Make := To_Manufacturer (Name_Text);
+                     exception
+                        when Constraint_Error =>
+                           Record_Item.Vehicle_Make := None_Make;
+                     end;
+
+                     -- Determine what kind of vehicle based on manufacturer
+                     Record_Item.Vehicle_Category :=
+                       Determine_Category (Record_Item.Vehicle_Make);
+
+                     -- Job_Text is actually the model (Raptor, Expedition, etc.)
+                     begin
+                        Record_Item.Vehicle_Model := To_Model (Job_Text);
+                     exception
+                        when Constraint_Error =>
+                           Record_Item.Vehicle_Model := None_Model;
+                     end;
+
+                     -- Read the count (number of doors for cars, or other vehicle-specific number)
+                     Get_Token (Token, End_File);
+                     exit when End_File;
+                     Record_Item.Vehicle_Count :=
+                       To_Natural (Token_To_String (Token));
+
+                     -- Read the color
+                     Get_Token (Token, End_File);
+                     exit when End_File;
+                     Record_Item.Vehicle_Color :=
+                       To_Color (Token_To_String (Token));
+
+                     -- Call the callback with this vehicle record
+                     Process_Employee.all (Record_Item);
+               end;
+
+               -- If we didn't complete (meaning it WAS an employee line), continue reading
+               if not Completed then
+                  -- Read the employee's age (third token in employee line)
+                  Get_Token (Token, End_File);
+                  exit when End_File;
+                  Record_Item.Age :=
+                    Integer'Value (Normalize (Token_To_String (Token)));
+
+                  -- Read the next token (should be vehicle manufacturer or another employee name)
+                  Get_Token (Token, End_File);
+                  exit when End_File;
+
+                  declare
+                     Make_Text : constant String := Token_To_String (Token);
+                  begin
+                     -- Try to parse as a vehicle manufacturer
+                     Record_Item.Vehicle_Make     := To_Manufacturer (Make_Text);
+                     Record_Item.Vehicle_Category :=
+                       Determine_Category (Record_Item.Vehicle_Make);
+                  exception
+                     when Constraint_Error =>
+                        -- Not a vehicle manufacturer, so this employee has no vehicles
+                        -- This token is actually the start of the NEXT employee line
+                        Record_Item.Vehicle_Make     := None_Make;
+                        Record_Item.Vehicle_Model    := None_Model;
+                        Record_Item.Vehicle_Count    := 0;
+                        Record_Item.Vehicle_Color    := None_Color;
+                        Record_Item.Vehicle_Category := None_Vehicle;
+
+                        -- Process this employee (with no vehicles)
+                        Process_Employee.all (Record_Item);
+                        -- Save this token for the next loop iteration (it's a new employee name)
+                        Pending_Token := Token;
+                        Has_Pending   := True;
+                        Completed     := True;
+                  end;
+
+                  -- If still not completed, we have an employee WITH a vehicle
+                  -- Example: "Sable Accountant 26 GMC Pickup 2 White"
+                  if not Completed then
+                     -- Read vehicle model
+                     Get_Token (Token, End_File);
+                     exit when End_File;
+                     Record_Item.Vehicle_Model :=
+                       To_Model (Token_To_String (Token));
+
+                     -- Read vehicle count (doors, or other vehicle-specific number)
+                     Get_Token (Token, End_File);
+                     exit when End_File;
+                     Record_Item.Vehicle_Count :=
+                       To_Natural (Token_To_String (Token));
+
+                     -- Read vehicle color
+                     Get_Token (Token, End_File);
+                     exit when End_File;
+                     Record_Item.Vehicle_Color :=
+                       To_Color (Token_To_String (Token));
+
+                     -- Call the callback with this complete employee+vehicle record
+                     Process_Employee.all (Record_Item);
+                  end if;
+               end if;
+            end;
+         end;
+      end loop;  -- End of main file reading loop
+
+      -- Close the file when done reading
+      Ada.Text_IO.Close (File_Handle);
+   exception
+      -- If any error occurs, make sure we close the file before re-raising the exception
+      when others =>
+         if Ada.Text_IO.Is_Open (File_Handle) then
+            Ada.Text_IO.Close (File_Handle);
+         end if;
+         raise;  -- Re-raise the exception so caller knows something went wrong
+   end Read_Employees;
+
+end ProcessFile;

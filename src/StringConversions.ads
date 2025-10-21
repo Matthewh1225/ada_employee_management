@@ -1,11 +1,11 @@
--- utils.ads
+-- StringConversions.ads
 -- Simple utility functions for string handling and parsing
 -- Beginner-friendly helpers without complex libraries
 
 with Types; use Types;
 with Enums; use Enums;
 
-package Utils is
+package StringConversions is
 
    -- Trim leading and trailing spaces from a string
    function Trim (S : String) return String;
@@ -35,4 +35,4 @@ package Utils is
    function Color_Image (C : Color_Type) return String;
    function Engine_Type_Image (E : Engine_Type) return String;
 
-end Utils;
+end StringConversions;

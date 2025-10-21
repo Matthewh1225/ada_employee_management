@@ -1,18 +1,19 @@
--- parse.adb
+-- FileParser.adb
 -- File parsing implementation using inheritance (A+ Option)
+-- This coordinates the reading of Cars.txt and creation of employee/vehicle objects
 
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Exceptions;
 with Types; use Types;
 with Enums; use Enums;
-with Utils; use Utils;
-with Pools; use Pools;
-with Lists; use Lists;
+with StringConversions; use StringConversions;
+with AvailableEmployeeList; use AvailableEmployeeList;
+with DepartmentLists; use DepartmentLists;
 with ProcessFile; use ProcessFile;
 
-package body Parse is
+package body FileParser is
 
-   -- Current employee being processed
+   -- Current employee
    Current_Employee_Index : Employee_Index_Number := 0;
 
    procedure Handle_Employee (Employee_Record_Data : ProcessFile.Employee_Record) is
@@ -20,18 +21,17 @@ package body Parse is
       Name_String_From_File : constant String := ProcessFile.To_String(Employee_Record_Data.Name);
       Name_Length_From_File : constant Natural := Employee_Record_Data.Name.Length;
    begin
-      -- Check if this is a new employee or vehicle for existing employee
+      -- Check if this is a new employee or existing employee
       if Employee_Record_Data.Job /= None then
-         -- It's an employee record - check if we already have this employee
-         -- Use name + department + age as unique identifier
+         -- Used name + department + age as unique key
          declare
             Found_Existing_Employee : Boolean := False;
          begin
-            -- Look through all employees in this department
+            -- Look through all employees in department
             if Departments (Employee_Record_Data.Job).Count > 0 then
                Employee_Index_To_Check := Departments (Employee_Record_Data.Job).Right_Link;
                while Employee_Index_To_Check /= 0 loop
-                  -- Compare names, department, AND age for unique identification
+                  -- Compare names, department, and age for identification
                   if Employee_Array (Employee_Index_To_Check).Name_Length = Name_Length_From_File and then
                      Employee_Array (Employee_Index_To_Check).Age = Employee_Record_Data.Age then
                      if Employee_Array (Employee_Index_To_Check).Name (1 .. Name_Length_From_File) = 
@@ -47,48 +47,42 @@ package body Parse is
             end if;
 
             if not Found_Existing_Employee then
-               -- New employee - allocate and add to department
                Current_Employee_Index := Allocate_Employee;
                if Current_Employee_Index = 0 then
-                  Put_Line ("Error: Employee pool exhausted");
+                  Put_Line ("Error: Employee pool empty");
                   return;
                end if;
 
-               -- Set employee data
                Employee_Array (Current_Employee_Index).Name := (others => ' ');
                for Character_Position in 1 .. Name_Length_From_File loop
                   Employee_Array (Current_Employee_Index).Name (Character_Position) := 
                      Name_String_From_File (Character_Position);
                end loop;
+               -- Set fields from employee record
                Employee_Array (Current_Employee_Index).Name_Length := Name_Length_From_File;
                Employee_Array (Current_Employee_Index).Age := Employee_Record_Data.Age;
                Employee_Array (Current_Employee_Index).Job := Employee_Record_Data.Job;
                Employee_Array (Current_Employee_Index).Vehicle_Count := 0;
                Employee_Array (Current_Employee_Index).Vehicles := (others => null);
 
-               -- Add to department's doubly-linked list
-               Lists.Insert_Sorted (Current_Employee_Index);
+               -- Add to department linked list
+               DepartmentLists.Insert_Sorted (Current_Employee_Index);
             end if;
          end;
       end if;
 
-      -- Handle vehicle record (allocate using 'new' for inheritance)
       if Current_Employee_Index /= 0 and Employee_Record_Data.Vehicle_Category /= None_Vehicle then
-         -- Check if employee has room for more vehicles
+         -- Check if employee has max vehicles(4)
          if Employee_Array (Current_Employee_Index).Vehicle_Count >= Maximum_Vehicles_Per_Employee then
             Put_Line ("Warning: Employee has too many vehicles");
             return;
          end if;
 
-         -- Allocate vehicle using inheritance ('new' with specific derived type)
+         -- Vehicle fields based on category eneum
          case Employee_Record_Data.Vehicle_Category is
             when Car_Type =>
                declare
-                  New_Car_Pointer : constant Vehicle_Pointer := new Car'(
-                     Make  => Employee_Record_Data.Vehicle_Make,
-                     Model => Employee_Record_Data.Vehicle_Model,
-                     Color => Employee_Record_Data.Vehicle_Color,
-                     Doors => Employee_Record_Data.Vehicle_Count);
+                  New_Car_Pointer : constant Vehicle_Pointer := new Car'( Make  => Employee_Record_Data.Vehicle_Make,Model => Employee_Record_Data.Vehicle_Model, Color => Employee_Record_Data.Vehicle_Color,Doors => Employee_Record_Data.Vehicle_Count);
                begin
                   Employee_Array (Current_Employee_Index).Vehicle_Count := 
                      Employee_Array (Current_Employee_Index).Vehicle_Count + 1;
@@ -97,11 +91,7 @@ package body Parse is
 
             when Plane_Type =>
                declare
-                  New_Plane_Pointer : constant Vehicle_Pointer := new Plane'(
-                     Make   => Employee_Record_Data.Vehicle_Make,
-                     Model  => Employee_Record_Data.Vehicle_Model,
-                     Color  => Employee_Record_Data.Vehicle_Color,
-                     Engine => Jet);  -- Planes use Jet engine
+                  New_Plane_Pointer : constant Vehicle_Pointer := new Plane'(Make   => Employee_Record_Data.Vehicle_Make,Model  => Employee_Record_Data.Vehicle_Model,Color  => Employee_Record_Data.Vehicle_Color, Engine => Jet);
                begin
                   Employee_Array (Current_Employee_Index).Vehicle_Count := 
                      Employee_Array (Current_Employee_Index).Vehicle_Count + 1;
@@ -119,17 +109,12 @@ package body Parse is
                   elsif Employee_Record_Data.Vehicle_Make = ThyssenKrupp then
                      Engine_Type_For_Submarine := Diesel;
                   else
-                     Engine_Type_For_Submarine := Nuclear;  -- Default
+                     Engine_Type_For_Submarine := Nuclear; -- 
                   end if;
 
-                  New_Submarine_Pointer := new Submarine'(
-                     Make   => Employee_Record_Data.Vehicle_Make,
-                     Model  => Employee_Record_Data.Vehicle_Model,
-                     Color  => Employee_Record_Data.Vehicle_Color,
-                     Engine => Engine_Type_For_Submarine);
+                  New_Submarine_Pointer := new Submarine'(Make   => Employee_Record_Data.Vehicle_Make, Model  => Employee_Record_Data.Vehicle_Model,Color  => Employee_Record_Data.Vehicle_Color,Engine => Engine_Type_For_Submarine);
 
-                  Employee_Array (Current_Employee_Index).Vehicle_Count := 
-                     Employee_Array (Current_Employee_Index).Vehicle_Count + 1;
+                  Employee_Array (Current_Employee_Index).Vehicle_Count := Employee_Array (Current_Employee_Index).Vehicle_Count + 1;
                   Employee_Array (Current_Employee_Index).Vehicles (Employee_Array (Current_Employee_Index).Vehicle_Count) := New_Submarine_Pointer;
                end;
 
@@ -138,26 +123,21 @@ package body Parse is
                   Engine_Type_For_Motorcycle : Engine_Type;
                   New_Motorcycle_Pointer : Vehicle_Pointer;
                begin
-                  -- Determine engine type based on manufacturer/model
+                  -- Determine engine based on manufacturer/model
                   if Employee_Record_Data.Vehicle_Model = R1 then
                      Engine_Type_For_Motorcycle := Inline_Four;
                   else
                      Engine_Type_For_Motorcycle := V_Twin;  -- Default for other motorcycles
                   end if;
 
-                  New_Motorcycle_Pointer := new Motorcycle'(
-                     Make   => Employee_Record_Data.Vehicle_Make,
-                     Model  => Employee_Record_Data.Vehicle_Model,
-                     Color  => Employee_Record_Data.Vehicle_Color,
-                     Engine => Engine_Type_For_Motorcycle);
+                  New_Motorcycle_Pointer := new Motorcycle'(Make  => Employee_Record_Data.Vehicle_Make, Model  => Employee_Record_Data.Vehicle_Model, Color  => Employee_Record_Data.Vehicle_Color,  Engine => Engine_Type_For_Motorcycle);
 
-                  Employee_Array (Current_Employee_Index).Vehicle_Count := 
-                     Employee_Array (Current_Employee_Index).Vehicle_Count + 1;
+                  Employee_Array (Current_Employee_Index).Vehicle_Count := Employee_Array (Current_Employee_Index).Vehicle_Count + 1;
                   Employee_Array (Current_Employee_Index).Vehicles (Employee_Array (Current_Employee_Index).Vehicle_Count) := New_Motorcycle_Pointer;
                end;
 
             when None_Vehicle =>
-               null;  -- Should not happen
+               null; 
          end case;
       end if;
 
@@ -168,7 +148,7 @@ package body Parse is
 
    function Process_File (Filename : String) return Boolean is
    begin
-      Put_Line ("Reading " & Filename & "...");
+      Put_Line ("Reading " & Filename);
       ProcessFile.Read_Employees (Filename, Handle_Employee'Access);
       Put_Line ("File processed successfully");
       return True;
@@ -178,4 +158,4 @@ package body Parse is
          return False;
    end Process_File;
 
-end Parse;
+end FileParser;

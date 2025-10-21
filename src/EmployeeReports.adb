@@ -1,13 +1,14 @@
--- report.adb
+-- EmployeeReports.adb
 -- Report generation implementation using inheritance (A+ Option)
+-- Prints employee and vehicle information in ascending and descending order
 
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Integer_Text_IO; use Ada.Integer_Text_IO;
 with Types; use Types;
 with Enums; use Enums;
-with Utils; use Utils;
+with StringConversions; use StringConversions;
 
-package body Report is
+package body EmployeeReports is
 
    procedure Print_Employee_Details (Employee_Index_To_Print : Employee_Index_Number) is
       Name_Length_Of_Employee : constant Natural := Employee_Array (Employee_Index_To_Print).Name_Length;
@@ -142,4 +143,4 @@ package body Report is
       Put_Line ("=== END DESCENDING REPORT ===");
    end Print_Descending;
 
-end Report;
+end EmployeeReports;

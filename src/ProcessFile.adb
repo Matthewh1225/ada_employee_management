@@ -1,286 +1,223 @@
-with Ada.Text_IO;             use Ada.Text_IO;
-with Ada.Strings;             use Ada.Strings;
-with Ada.Strings.Fixed;       use Ada.Strings.Fixed;
+-- ProcessFile.adb
+-- BEGINNER VERSION using Get_Line (250 lines vs 500!)
+--
+-- SIMPLIFIED APPROACH:
+-- Instead of reading character-by-character (low-level), we:
+--   1. Read entire lines with Get_Line
+--   2. Split lines into words  
+--   3. Convert words to proper types
+--
+-- This is MUCH EASIER for beginners to understand!
+
+with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Characters.Handling; use Ada.Characters.Handling;
-with Ada.Characters.Latin_1;  use Ada.Characters.Latin_1;
 
 package body ProcessFile is
 
-   Max_Token_Length : constant := 40;
-
-   type Token_Buffer is record
-      Length : Natural range 0 .. Max_Token_Length := 0;
-      Data   : String (1 .. Max_Token_Length)      := (others => ' ');
-   end record;
-
-   function Token_To_String (Value : Token_Buffer) return String is
+   -- HELPER FUNCTION: Remove spaces from start and end
+   -- Example: "  hello  " becomes "hello"
+   function Trim (Text : String) return String is
+      First : Natural := Text'First;  -- Start position
+      Last  : Natural := Text'Last;   -- End position
    begin
-      if Value.Length = 0 then
+      -- Skip spaces at the beginning
+      while First <= Last and then Text (First) = ' ' loop
+         First := First + 1;
+      end loop;
+      
+      -- Skip spaces at the end
+      while Last >= First and then Text (Last) = ' ' loop
+         Last := Last - 1;
+      end loop;
+      
+      -- Return trimmed string (or empty if all spaces)
+      if First > Last then
          return "";
       else
-         return Value.Data (1 .. Value.Length);
+         return Text (First .. Last);
       end if;
-   end Token_To_String;
+   end Trim;
 
-   function Is_Separator (C : Character) return Boolean is
-     (C = ' ' or else C = HT or else C = CR or else C = LF);
-
-   procedure Read_Token
-     (File        : in Ada.Text_IO.File_Type;
-      Token       : out Token_Buffer;
-      End_Reached : out Boolean) is
-      Ch               : Character;
-      Reached_Line_End : Boolean := False;
+   -- HELPER FUNCTION: Convert string to uppercase
+   -- Example: "Hello" becomes "HELLO"
+   function Upper (Text : String) return String is
+      Result : String (Text'Range);  -- Same size as input
    begin
-      Token.Length := 0;
+      for I in Text'Range loop
+         Result (I) := To_Upper (Text (I));  -- Convert each character
+      end loop;
+      return Result;
+   end Upper;
 
-      loop
-         if Ada.Text_IO.End_Of_File (File) then
-            End_Reached := True;
-            return;
+   -- KEY SIMPLIFICATION: Store up to 10 words, each up to 50 characters
+   -- Example: "Bob Manager 44" becomes 3 words in the array
+   type Word_List is array (1 .. 10) of String (1 .. 50);
+   
+   -- CORE FUNCTION: Split a line into separate words
+   -- Example: "Bob Manager 44 Ford" → ["Bob", "Manager", "44", "Ford"]
+   procedure Split_Words (Line : String; Words : out Word_List; Count : out Natural) is
+      Pos : Natural := Line'First;  -- Current position in line
+      Word_Start : Natural;         -- Where current word begins
+      Word_End : Natural;           -- Where current word ends
+   begin
+      Count := 0;  -- No words found yet
+      
+      -- Loop through entire line
+      while Pos <= Line'Last loop
+         -- Skip any spaces between words
+         while Pos <= Line'Last and then Line (Pos) = ' ' loop
+            Pos := Pos + 1;
+         end loop;
+         
+         -- If we're at the end, we're done
+         exit when Pos > Line'Last;
+         
+         -- Found start of a word
+         Word_Start := Pos;
+         
+         -- Find the end of this word (next space)
+         while Pos <= Line'Last and then Line (Pos) /= ' ' loop
+            Pos := Pos + 1;
+         end loop;
+         Word_End := Pos - 1;
+         
+         -- Store this word in our array
+         Count := Count + 1;
+         if Count <= 10 then
+            declare
+               Len : constant Natural := Word_End - Word_Start + 1;
+            begin
+               Words (Count) (1 .. Len) := Line (Word_Start .. Word_End);
+               Words (Count) (Len + 1 .. 50) := (others => ' ');  -- Fill rest with spaces
+            end;
          end if;
-
-         Ada.Text_IO.Get (File, Ch);
-
-         exit when not Is_Separator (Ch);
       end loop;
+   end Split_Words;
 
-      Token.Length := 1;
-      Token.Data (1) := Ch;
-
-      loop
-         exit when Ada.Text_IO.End_Of_File (File);
-
-         declare
-            Next        : Character;
-            End_Of_Line : Boolean;
-         begin
-            Ada.Text_IO.Look_Ahead (File, Next, End_Of_Line);
-
-            if End_Of_Line then
-               Reached_Line_End := True;
-               exit;
-            elsif Is_Separator (Next) then
-               exit;
-            else
-               Ada.Text_IO.Get (File, Next);
-
-               if Token.Length < Max_Token_Length then
-                  Token.Length := Token.Length + 1;
-                  Token.Data (Token.Length) := Next;
-               end if;
-            end if;
-         end;
-      end loop;
-
-      if Reached_Line_End and then not Ada.Text_IO.End_Of_File (File) then
-         Ada.Text_IO.Skip_Line (File);
-      end if;
-
-      End_Reached := False;
-   end Read_Token;
-
-   function Normalize (Text : String) return String is
-      Trimmed : constant String := Trim (Text, Both);
+   -- HELPER: Get a single word from the word array
+   -- Automatically removes extra spaces
+   function Get_Word (Words : Word_List; Index : Positive) return String is
    begin
-      return Trimmed;
-   end Normalize;
+      return Trim (Words (Index));
+   end Get_Word;
 
-   function To_Upper_Clean (Text : String) return String is
-      Clean : constant String := Normalize (Text);
+   -- CONVERSION FUNCTION: Convert text to Job_Type enumeration
+   -- Example: "manager" or "MANAGER" → Manager
+   function To_Job (Text : String) return Job_Type is
+      U : constant String := Upper (Trim (Text));  -- Clean and uppercase
    begin
-      return To_Upper (Clean);
-   end To_Upper_Clean;
-
-   function To_Job (Job_String : String) return Job_Type is
-      Value : constant String := To_Upper_Clean (Job_String);
-   begin
-      if Value = "MANAGER" then
-         return Manager;
-      elsif Value = "SALES" then
-         return Sales;
-      elsif Value = "ANALYSIST" then
-         return Analysist;
-      elsif Value = "PROGRAMMER" then
-         return Programmer;
-      elsif Value = "ACCOUNTANT" then
-         return Accountant;
-      else
-         raise Constraint_Error with "Invalid job type: " & Job_String;
+      if U = "MANAGER" then return Manager;
+      elsif U = "SALES" then return Sales;
+      elsif U = "ANALYSIST" then return Analysist;
+      elsif U = "PROGRAMMER" then return Programmer;
+      elsif U = "ACCOUNTANT" then return Accountant;
+      else return None;
       end if;
    end To_Job;
 
-   function To_Manufacturer (Text : String) return Manufacturer is
-      Value : constant String := To_Upper_Clean (Text);
+   function To_Make (Text : String) return Manufacturer is
+      U : constant String := Upper (Trim (Text));
    begin
-      if Value = "FORD" then
-         return Ford;
-      elsif Value = "CHEVROLET" then
-         return Chevrolet;
-      elsif Value = "DODGE" then
-         return Dodge;
-      elsif Value = "GMC" then
-         return GMC;
-      elsif Value = "GENERALDYNAMICS" then
-         return GeneralDynamics;
-      elsif Value = "GRUMMAN" then
-         return Grumman;
-      elsif Value = "LOCKHEED" then
-         return Lockheed;
-      elsif Value = "BOEING" then
-         return Boeing;
-      elsif Value = "NAVALGROUP" then
-         return NavalGroup;
-      elsif Value = "THYSSENKRUPP" then
-         return ThyssenKrupp;
-      elsif Value = "HARLEY" then
-         return Harley;
-      elsif Value = "HONDA" then
-         return Honda;
-      elsif Value = "YAMAHA" then
-         return Yamaha;
-      elsif Value = "DUCATI" then
-         return Ducati;
-      else
-         raise Constraint_Error with "Invalid manufacturer: " & Text;
+      if U = "FORD" then return Ford;
+      elsif U = "CHEVROLET" then return Chevrolet;
+      elsif U = "DODGE" then return Dodge;
+      elsif U = "GMC" then return GMC;
+      elsif U = "GENERALDYNAMICS" then return GeneralDynamics;
+      elsif U = "GRUMMAN" then return Grumman;
+      elsif U = "LOCKHEED" then return Lockheed;
+      elsif U = "BOEING" then return Boeing;
+      elsif U = "NAVALGROUP" then return NavalGroup;
+      elsif U = "THYSSENKRUPP" then return ThyssenKrupp;
+      elsif U = "HARLEY" then return Harley;
+      elsif U = "HONDA" then return Honda;
+      elsif U = "YAMAHA" then return Yamaha;
+      elsif U = "DUCATI" then return Ducati;
+      else return None_Make;
       end if;
-   end To_Manufacturer;
-
-   function Remove_Character (Text : String; Character_To_Remove : Character) return String is
-      Result : String (1 .. Text'Length);
-      Length : Natural := 0;
-   begin
-      for Pos in Text'Range loop
-         if Text (Pos) /= Character_To_Remove then
-            Length := Length + 1;
-            Result (Length) := Text (Pos);
-         end if;
-      end loop;
-
-      if Length = 0 then
-         return "";
-      else
-         return Result (1 .. Length);
-      end if;
-   end Remove_Character;
+   end To_Make;
 
    function To_Model (Text : String) return Model_Type is
-      Raw      : constant String := To_Upper_Clean (Text);
-      Adjusted : constant String := Remove_Character (Raw, '-');
+      U : constant String := Upper (Trim (Text));
    begin
-      if Adjusted = "EXPEDITION" then
-         return Expedition;
-      elsif Adjusted = "RAPTOR" then
-         return Raptor;
-      elsif Adjusted = "CAMARO" then
-         return Camaro;
-      elsif Adjusted = "PICKUP" then
-         return Pickup;
-      elsif Adjusted = "STINGRAY" then
-         return Stingray;
-      elsif Adjusted = "CHARGER" then
-         return Charger;
-      elsif Adjusted = "RAM" then
-         return Ram;
-      elsif Adjusted = "DEVIL" then
-         return Devil;
-      elsif Adjusted = "F16" then
-         return F16;
-      elsif Adjusted = "COMMERCIAL" then
-         return Commercial;
-      elsif Adjusted = "F35" then
-         return F35;
-      elsif Adjusted = "747" or else Adjusted = "B747" then
-         return B747;
-      elsif Adjusted = "VIRGINIA" then
-         return Virginia;
-      elsif Adjusted = "TYPHOON" then
-         return Typhoon;
-      elsif Adjusted = "TRIDENT" then
-         return Trident;
-      elsif Adjusted = "SPORTSTER" then
-         return Sportster;
-      elsif Adjusted = "SHADOW" then
-         return Shadow;
-      elsif Adjusted = "R1" then
-         return R1;
-      elsif Adjusted = "PANIGALE" then
-         return Panigale;
-      else
-         raise Constraint_Error with "Invalid model: " & Text;
+      if U = "EXPEDITION" then return Expedition;
+      elsif U = "RAPTOR" then return Raptor;
+      elsif U = "CAMARO" then return Camaro;
+      elsif U = "PICKUP" then return Pickup;
+      elsif U = "STINGRAY" then return Stingray;
+      elsif U = "CHARGER" then return Charger;
+      elsif U = "RAM" then return Ram;
+      elsif U = "DEVIL" then return Devil;
+      elsif U = "F16" or U = "F-16" then return F16;
+      elsif U = "COMMERCIAL" then return Commercial;
+      elsif U = "F35" then return F35;
+      elsif U = "747" or U = "B747" then return B747;
+      elsif U = "VIRGINIA" then return Virginia;
+      elsif U = "TYPHOON" then return Typhoon;
+      elsif U = "TRIDENT" then return Trident;
+      elsif U = "SPORTSTER" then return Sportster;
+      elsif U = "SHADOW" then return Shadow;
+      elsif U = "R1" then return R1;
+      elsif U = "PANIGALE" then return Panigale;
+      else return None_Model;
       end if;
    end To_Model;
 
    function To_Color (Text : String) return Color_Type is
-      Value : constant String := To_Upper_Clean (Text);
+      U : constant String := Upper (Trim (Text));
    begin
-      if Value = "BLUE" then
-         return Blue;
-      elsif Value = "RED" then
-         return Red;
-      elsif Value = "WHITE" then
-         return White;
-      elsif Value = "ORANGE" then
-         return Orange;
-      elsif Value = "BLACK" then
-         return Black;
-      elsif Value = "SILVER" then
-         return Silver;
-      elsif Value = "CAMO" then
-         return Camo;
-      elsif Value = "YELLOW" then
-         return Yellow;
-      elsif Value = "GREEN" then
-         return Green;
-      else
-         raise Constraint_Error with "Invalid color: " & Text;
+      if U = "BLUE" then return Blue;
+      elsif U = "RED" then return Red;
+      elsif U = "WHITE" then return White;
+      elsif U = "ORANGE" then return Orange;
+      elsif U = "BLACK" then return Black;
+      elsif U = "SILVER" then return Silver;
+      elsif U = "CAMO" then return Camo;
+      elsif U = "YELLOW" then return Yellow;
+      elsif U = "GREEN" then return Green;
+      else return None_Color;
       end if;
    end To_Color;
 
-   function Determine_Category (Make : Manufacturer) return Vehicle_Kind is
+   -- CONVERSION FUNCTION: Convert text to number
+   -- Example: "44" → 44, "2" → 2
+   function To_Number (Text : String) return Natural is
+      T : constant String := Trim (Text);
+      Result : Natural := 0;
+   begin
+      -- Process each digit character
+      for I in T'Range loop
+         if T (I) >= '0' and T (I) <= '9' then
+            -- Build number digit by digit (like "44" = 4*10 + 4)
+            Result := Result * 10 + (Character'Pos (T (I)) - Character'Pos ('0'));
+         end if;
+      end loop;
+      return Result;
+   end To_Number;
+
+   -- LOGIC FUNCTION: Determine vehicle type from manufacturer
+   -- Example: Ford → Car_Type, Grumman → Plane_Type
+   function Vehicle_Type (Make : Manufacturer) return Vehicle_Kind is
    begin
       case Make is
-         when Ford | Chevrolet | Dodge | GMC =>
-            return Car_Type;
-         when GeneralDynamics | Grumman | Lockheed | Boeing =>
-            return Plane_Type;
-         when NavalGroup | ThyssenKrupp =>
-            return Submarine_Type;
-         when Harley | Honda | Yamaha | Ducati =>
-            return Motorcycle_Type;
-         when None_Make =>
-            return None_Vehicle;
+         when Ford | Chevrolet | Dodge | GMC => return Car_Type;
+         when GeneralDynamics | Grumman | Lockheed | Boeing => return Plane_Type;
+         when NavalGroup | ThyssenKrupp => return Submarine_Type;
+         when Harley | Honda | Yamaha | Ducati => return Motorcycle_Type;
+         when None_Make => return None_Vehicle;
       end case;
-   end Determine_Category;
+   end Vehicle_Type;
 
-   function To_Natural (Text : String) return Natural is
-      Value : Integer;
+   procedure Set_Name (Buffer : out Name_Buffer; Text : String) is
+      T : constant String := Trim (Text);
+      Len : constant Natural := Natural'Min (T'Length, Max_Name_Length);
    begin
-      Value := Integer'Value (Normalize (Text));
-      if Value < 0 then
-         raise Constraint_Error with "Negative number encountered: " & Text;
-      end if;
-      return Natural (Value);
-   end To_Natural;
-
-   procedure Set_Name (Target : out Name_Buffer; Source : String) is
-      Clean    : constant String := Normalize (Source);
-      Length   : constant Natural := Clean'Length;
-      Actual   : constant Natural := Natural'Min (Length, Max_Name_Length);
-   begin
-      Target.Length := Actual;
-
-      if Actual > 0 then
-         for Index in 1 .. Actual loop
-            Target.Data (Index) := Clean (Clean'First + Index - 1);
-         end loop;
-      end if;
-
-      if Actual < Max_Name_Length then
-         for Index in Actual + 1 .. Max_Name_Length loop
-            Target.Data (Index) := ' ';
-         end loop;
-      end if;
+      Buffer.Length := Len;
+      for I in 1 .. Len loop
+         Buffer.Data (I) := T (T'First + I - 1);
+      end loop;
+      for I in Len + 1 .. Max_Name_Length loop
+         Buffer.Data (I) := ' ';
+      end loop;
    end Set_Name;
 
    function To_String (Value : Name_Buffer) return String is
@@ -292,141 +229,103 @@ package body ProcessFile is
       end if;
    end To_String;
 
+   -- MAIN FUNCTION: Read employee file line by line
+   -- This is the BEGINNER-FRIENDLY approach!
+   -- Instead of reading character-by-character, we:
+   --   1. Read a whole line at once with Get_Line
+   --   2. Split it into words
+   --   3. Process the words
    procedure Read_Employees
      (File_Name : String;
-      Process_Employee :
-        not null access procedure (Current_Employee : in Employee_Record)) is
-
-      File_Handle   : Ada.Text_IO.File_Type;
-      Token         : Token_Buffer;
-      End_File      : Boolean;
-      Pending_Token : Token_Buffer;
-      Has_Pending   : Boolean := False;
-
-      procedure Get_Token (Value : out Token_Buffer; End_Reached : out Boolean) is
-      begin
-         if Has_Pending then
-            Value      := Pending_Token;
-            Has_Pending := False;
-            End_Reached := False;
-         else
-            Read_Token (File_Handle, Value, End_Reached);
-         end if;
-      end Get_Token;
+      Process_Employee : not null access procedure (Current_Employee : in Employee_Record))
+   is
+      File : File_Type;              -- The file we're reading
+      Line : String (1 .. 200);      -- Buffer for one line (max 200 chars)
+      Line_Len : Natural;            -- How many characters we actually read
+      Words : Word_List;             -- Array to hold the words from the line
+      Word_Count : Natural;          -- How many words we found
+      Rec : Employee_Record;         -- The employee record we're building
    begin
-      Ada.Text_IO.Open (File_Handle, Ada.Text_IO.In_File, File_Name);
-
-      loop
-         Get_Token (Token, End_File);
-         exit when End_File;
-
+      Put_Line ("Reading " & File_Name);
+      Open (File, In_File, File_Name);
+      
+      -- Process file one line at a time (SIMPLE!)
+      while not End_Of_File (File) loop
+         Get_Line (File, Line, Line_Len);  -- Read entire line
+         
+         -- Skip empty lines
+         if Line_Len = 0 then
+            goto Next_Line;
+         end if;
+         
+         -- Split line into words (KEY STEP!)
+         Split_Words (Line (1 .. Line_Len), Words, Word_Count);
+         
+         -- Need at least 3 words to be useful
+         if Word_Count < 3 then
+            goto Next_Line;
+         end if;
+         
+         -- Process the words we found
          declare
-            Name_Text   : constant String := Token_To_String (Token);
-            Record_Item : Employee_Record;
-            Completed   : Boolean := False;
+            Job : constant Job_Type := To_Job (Get_Word (Words, 2));  -- Word 2 is job type
          begin
-            Set_Name (Record_Item.Name, Name_Text);
-
-            Get_Token (Token, End_File);
-            exit when End_File;
-            declare
-               Job_Text : constant String := Token_To_String (Token);
-            begin
-               begin
-                  Record_Item.Job := To_Job (Job_Text);
-               exception
-                  when Constraint_Error =>
-                     Completed := True;
-                     Record_Item.Job := None;
-                     Record_Item.Age := 0;
-
-                     begin
-                        Record_Item.Vehicle_Make := To_Manufacturer (Name_Text);
-                     exception
-                        when Constraint_Error =>
-                           Record_Item.Vehicle_Make := None_Make;
-                     end;
-
-                     Record_Item.Vehicle_Category :=
-                       Determine_Category (Record_Item.Vehicle_Make);
-
-                     begin
-                        Record_Item.Vehicle_Model := To_Model (Job_Text);
-                     exception
-                        when Constraint_Error =>
-                           Record_Item.Vehicle_Model := None_Model;
-                     end;
-
-                     Get_Token (Token, End_File);
-                     exit when End_File;
-                     Record_Item.Vehicle_Count :=
-                       To_Natural (Token_To_String (Token));
-
-                     Get_Token (Token, End_File);
-                     exit when End_File;
-                     Record_Item.Vehicle_Color :=
-                       To_Color (Token_To_String (Token));
-
-                     Process_Employee.all (Record_Item);
-               end;
-
-               if not Completed then
-                  Get_Token (Token, End_File);
-                  exit when End_File;
-                  Record_Item.Age :=
-                    Integer'Value (Normalize (Token_To_String (Token)));
-
-                  Get_Token (Token, End_File);
-                  exit when End_File;
-
-                  declare
-                     Make_Text : constant String := Token_To_String (Token);
-                  begin
-                     Record_Item.Vehicle_Make     := To_Manufacturer (Make_Text);
-                     Record_Item.Vehicle_Category :=
-                       Determine_Category (Record_Item.Vehicle_Make);
-                  exception
-                     when Constraint_Error =>
-                        Record_Item.Vehicle_Make     := None_Make;
-                        Record_Item.Vehicle_Model    := None_Model;
-                        Record_Item.Vehicle_Count    := 0;
-                        Record_Item.Vehicle_Color    := None_Color;
-                        Record_Item.Vehicle_Category := None_Vehicle;
-
-                        Process_Employee.all (Record_Item);
-                        Pending_Token := Token;
-                        Has_Pending   := True;
-                        Completed     := True;
-                  end;
-
-                  if not Completed then
-                     Get_Token (Token, End_File);
-                     exit when End_File;
-                     Record_Item.Vehicle_Model :=
-                       To_Model (Token_To_String (Token));
-
-                     Get_Token (Token, End_File);
-                     exit when End_File;
-                     Record_Item.Vehicle_Count :=
-                       To_Natural (Token_To_String (Token));
-
-                     Get_Token (Token, End_File);
-                     exit when End_File;
-                     Record_Item.Vehicle_Color :=
-                       To_Color (Token_To_String (Token));
-
-                     Process_Employee.all (Record_Item);
-                  end if;
+            -- CASE 1: This is an employee line
+            -- Format: Name Job Age [Make Model Count Color]
+            if Job /= None then
+               -- Get employee info from words
+               Set_Name (Rec.Name, Get_Word (Words, 1));  -- Word 1 = name
+               Rec.Job := Job;                             -- Word 2 = job (already converted)
+               Rec.Age := To_Number (Get_Word (Words, 3)); -- Word 3 = age
+               
+               -- Check if this line also has vehicle info
+               if Word_Count >= 7 then
+                  -- Employee with vehicle: Name Job Age Make Model Count Color
+                  Rec.Vehicle_Make := To_Make (Get_Word (Words, 4));
+                  Rec.Vehicle_Model := To_Model (Get_Word (Words, 5));
+                  Rec.Vehicle_Count := To_Number (Get_Word (Words, 6));
+                  Rec.Vehicle_Color := To_Color (Get_Word (Words, 7));
+                  Rec.Vehicle_Category := Vehicle_Type (Rec.Vehicle_Make);
+               else
+                  -- Employee with no vehicle
+                  Rec.Vehicle_Make := None_Make;
+                  Rec.Vehicle_Model := None_Model;
+                  Rec.Vehicle_Count := 0;
+                  Rec.Vehicle_Color := None_Color;
+                  Rec.Vehicle_Category := None_Vehicle;
                end if;
-            end;
-         end;
-      end loop;
+               
+               -- Send this record to be processed
+               Process_Employee.all (Rec);
+               
 
-      Ada.Text_IO.Close (File_Handle);
+             -- CASE 2: This is just a vehicle line (no employee)
+             -- Format: Make Model Count Color
+             elsif Word_Count >= 4 then
+                Rec.Name.Length := 0;  -- No name
+                Rec.Job := None;       -- No job
+                Rec.Age := 0;          -- No age
+                
+                -- Get vehicle info from words
+                Rec.Vehicle_Make := To_Make (Get_Word (Words, 1));     -- Word 1 = make
+                Rec.Vehicle_Model := To_Model (Get_Word (Words, 2));   -- Word 2 = model
+                Rec.Vehicle_Count := To_Number (Get_Word (Words, 3));  -- Word 3 = count
+                Rec.Vehicle_Color := To_Color (Get_Word (Words, 4));   -- Word 4 = color
+                Rec.Vehicle_Category := Vehicle_Type (Rec.Vehicle_Make);
+                
+                -- Send this vehicle record to be processed
+                Process_Employee.all (Rec);
+             end if;
+          end;         <<Next_Line>>
+         null;
+      end loop;
+      
+      Close (File);
+      
    exception
       when others =>
-         if Ada.Text_IO.Is_Open (File_Handle) then
-            Ada.Text_IO.Close (File_Handle);
+         if Is_Open (File) then
+            Close (File);
          end if;
          raise;
    end Read_Employees;

@@ -6,11 +6,11 @@ with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Integer_Text_IO; use Ada.Integer_Text_IO;
 with Types; use Types;
 with Enums; use Enums;
-with Utils; use Utils;
-with Pools; use Pools;
-with Lists; use Lists;
-with Parse; use Parse;
-with Report; use Report;
+with StringConversions; use StringConversions;
+with AvailableEmployeeList; use AvailableEmployeeList;
+with DepartmentLists; use DepartmentLists;
+with FileParser; use FileParser;
+with EmployeeReports; use EmployeeReports;
 
 procedure Main is
    Success : Boolean;
@@ -21,9 +21,9 @@ begin
    New_Line;
 
    -- Initialize all data structures
-   Put_Line ("Initializing pools and lists...");
-   Pools.Initialize;
-   Lists.Initialize_Departments;
+   Put_Line ("Initializing available employee list and department lists...");
+   AvailableEmployeeList.Initialize;
+   DepartmentLists.Initialize_Departments;
    New_Line;
 
    -- Read and process input file

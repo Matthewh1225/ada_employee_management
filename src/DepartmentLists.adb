@@ -1,15 +1,14 @@
--- lists.adb
--- Doubly-linked list implementation with head nodes
+-- DepartmentLists.adb
+-- Implementation of doubly-linked list operations for department management
 
 with Enums; use Enums;
-with Utils; use Utils;
+with StringConversions; use StringConversions;
 
-package body Lists is
+package body DepartmentLists is
 
-   -- Initialize all department head nodes
    procedure Initialize_Departments is
    begin
-      -- Set up head node for each department
+      -- Set up head for each department
       for Department_Type in Job_Type loop
          if Department_Type /= None then
             Departments (Department_Type).Job := Department_Type;
@@ -20,8 +19,7 @@ package body Lists is
       end loop;
    end Initialize_Departments;
 
-   -- Insert employee into sorted position
-   -- First by Age (ascending), then by Name (ascending) if ages equal
+   -- First by Age then by Name  if age areequal
    procedure Insert_Sorted (Employee_Index_To_Insert : Employee_Index_Number) is
       Department_Of_Employee : constant Job_Type := Employee_Array (Employee_Index_To_Insert).Job;
       Age_Of_Employee        : constant Natural := Employee_Array (Employee_Index_To_Insert).Age;
@@ -33,7 +31,7 @@ package body Lists is
       -- Increment count
       Departments (Department_Of_Employee).Count := Departments (Department_Of_Employee).Count + 1;
 
-      -- Case 1: Empty list - insert as first element
+      -- if Empty list insert as first spot
       if Departments (Department_Of_Employee).Right_Link = 0 then
          Employee_Array (Employee_Index_To_Insert).Left_Link := 0;
          Employee_Array (Employee_Index_To_Insert).Right_Link := 0;
@@ -42,15 +40,12 @@ package body Lists is
          return;
       end if;
 
-      -- Start at beginning of list
+      -- Start at beginning of list poitedf to by head node
       Current_Employee_Index := Departments (Department_Of_Employee).Right_Link;
 
-      -- Case 2: Insert at beginning (before first element)
-      if Age_Of_Employee < Employee_Array (Current_Employee_Index).Age or else
-         (Age_Of_Employee = Employee_Array (Current_Employee_Index).Age and then
-          Name_Less_Than (Name_Of_Employee, Name_Length_Of_Employee,
-                         Employee_Array (Current_Employee_Index).Name,
-                         Employee_Array (Current_Employee_Index).Name_Length))
+      -- Insert at beginning
+      if Age_Of_Employee < Employee_Array (Current_Employee_Index).Age or else (Age_Of_Employee = Employee_Array (Current_Employee_Index).Age and then 
+      Name_Less_Than (Name_Of_Employee, Name_Length_Of_Employee, Employee_Array (Current_Employee_Index).Name,Employee_Array (Current_Employee_Index).Name_Length))
       then
          Employee_Array (Employee_Index_To_Insert).Left_Link := 0;
          Employee_Array (Employee_Index_To_Insert).Right_Link := Current_Employee_Index;
@@ -59,9 +54,8 @@ package body Lists is
          return;
       end if;
 
-      -- Case 3 & 4: Find position in middle or insert at end
+      -- insert in middle or insert at end
       loop
-         -- Check if we should insert before next element
          if Employee_Array (Current_Employee_Index).Right_Link = 0 then
             -- Current is last element - insert at end
             Employee_Array (Employee_Index_To_Insert).Left_Link := Current_Employee_Index;
@@ -76,13 +70,10 @@ package body Lists is
             Age_Of_Next_Employee : constant Natural := Employee_Array (Next_Employee_Index).Age;
          begin
             -- Compare with next element to see if we insert here
-            if Age_Of_Employee < Age_Of_Next_Employee or else
-               (Age_Of_Employee = Age_Of_Next_Employee and then
-                Name_Less_Than (Name_Of_Employee, Name_Length_Of_Employee,
-                               Employee_Array (Next_Employee_Index).Name,
-                               Employee_Array (Next_Employee_Index).Name_Length))
+            if Age_Of_Employee < Age_Of_Next_Employee or else (Age_Of_Employee = Age_Of_Next_Employee and then
+                Name_Less_Than (Name_Of_Employee, Name_Length_Of_Employee,Employee_Array (Next_Employee_Index).Name,Employee_Array (Next_Employee_Index).Name_Length))
             then
-               -- Insert between Current and Next
+               -- Insert between Current and Next employe nodes
                Employee_Array (Employee_Index_To_Insert).Left_Link := Current_Employee_Index;
                Employee_Array (Employee_Index_To_Insert).Right_Link := Next_Employee_Index;
                Employee_Array (Current_Employee_Index).Right_Link := Employee_Index_To_Insert;
@@ -91,12 +82,11 @@ package body Lists is
             end if;
          end;
 
-         -- Move to next element
          Current_Employee_Index := Employee_Array (Current_Employee_Index).Right_Link;
       end loop;
-   end Insert_Sorted;
+      end Insert_Sorted;
 
-   -- Traverse forward (ascending order)
+   --ascending order, go unitl
    procedure Traverse_Forward (Department : Job_Type;
                               Visit : access procedure (Employee_Index_To_Visit : Employee_Index_Number)) is
       Current_Employee_Index : Employee_Index_Number := Departments (Department).Right_Link;
@@ -107,7 +97,7 @@ package body Lists is
       end loop;
    end Traverse_Forward;
 
-   -- Traverse backward (descending order)
+   -- descending order
    procedure Traverse_Backward (Department : Job_Type;
                                Visit : access procedure (Employee_Index_To_Visit : Employee_Index_Number)) is
       Current_Employee_Index : Employee_Index_Number := Departments (Department).Left_Link;
@@ -118,4 +108,4 @@ package body Lists is
       end loop;
    end Traverse_Backward;
 
-end Lists;
+end DepartmentLists;

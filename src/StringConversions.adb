@@ -1,7 +1,7 @@
--- utils.adb
+-- StringConversions.adb
 -- Implementation of utility functions
 
-package body Utils is
+package body StringConversions is
 
    -- Trim leading and trailing spaces
    function Trim (S : String) return String is
@@ -307,4 +307,4 @@ package body Utils is
       end case;
    end Engine_Type_Image;
 
-end Utils;
+end StringConversions;

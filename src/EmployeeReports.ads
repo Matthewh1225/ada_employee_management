@@ -1,7 +1,7 @@
--- report.ads
--- Output generation for employee reports
+-- EmployeeReports.ads
+-- Output generation for employee reports (ascending and descending)
 
-package Report is
+package EmployeeReports is
 
    -- Generate ascending report (departments and employees in ascending order)
    procedure Print_Ascending;
@@ -9,4 +9,4 @@ package Report is
    -- Generate descending report (departments and employees in descending order)
    procedure Print_Descending;
 
-end Report;
+end EmployeeReports;
