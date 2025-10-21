@@ -1,0 +1,38 @@
+# Ada/Alire Build Artifacts
+/obj/
+/bin/
+/alire/
+/config/
+
+# Ada Compiler Files
+*.ali
+*.o
+*.exe
+*.bexch
+*.cswi
+
+# Compilation Output
+*.stderr
+*.stdout
+
+# Backup Files
+*.old
+*.old2
+*~
+*.bak
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary Files
+tmp/
+temp/
+*.tmp
