@@ -1,4 +1,4 @@
--- main.adb
+-- employee_manager.adb
 -- Main driver program for employee management system
 -- Reads Cars.txt and generates ascending/descending reports
 
@@ -12,7 +12,7 @@ with DepartmentLists; use DepartmentLists;
 with FileParser; use FileParser;
 with EmployeeReports; use EmployeeReports;
 
-procedure Main is
+procedure Employee_Manager is
    Success : Boolean;
 begin
    Put_Line ("Employee Management System");
@@ -43,4 +43,4 @@ begin
    Print_Descending;
 
    Put_Line ("Program completed successfully");
-end Main;
+end Employee_Manager;
