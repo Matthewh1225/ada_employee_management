@@ -1,12 +1,8 @@
--- EmployeeReports.ads
--- Output generation for employee reports (ascending and descending)
-
+--EmployeeReports.ads
+with Types; use Types;
 package EmployeeReports is
-
-   -- Generate ascending report (departments and employees in ascending order)
+   -- Print all departments and employees in ascending order
    procedure Print_Ascending;
-
-   -- Generate descending report (departments and employees in descending order)
-   procedure Print_Descending;
-
+   -- Print an employe details 
+   procedure Print_Employee_Details (Employee_Index_To_Print : Employee_Index_Number);
 end EmployeeReports;

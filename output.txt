@@ -1,0 +1,61 @@
+Employee Transport System
+
+Reading Employee_Records.txt
+File processed 
+
+ascending order
+Department: ACCOUNTANT
+  Count: 1
+   Sable Age: 26
+      Car: GMC PICKUP WHITE Doors: 2
+
+Department: ANALYSIST
+  Count: 3
+   Betty Age: 23
+      Car: CHEVROLET STINGRAY RED Doors: 2
+   Kevin Age: 23
+      Car: FORD EXPEDITION BLUE Doors: 5
+      Spaceship:SPACEX DRAGON BLACK Engine:LIGHT_SPEED Entry Points: 3
+      Submarine: NAVALGROUP VIRGINIA BLUE Engine: NUCLEAR Entry Points: 20
+   Tom Age: 23
+      Car: DODGE CHARGER BLACK Doors: 4
+      Submarine: NAVALGROUP TRIDENT CAMO Engine: NUCLEAR Entry Points: 10
+
+Department: MANAGER
+  Count: 3
+   Bob Age: 43
+      Car: DODGE DEVIL ORANGE Doors: 2
+   Bob Age: 44
+      Car: CHEVROLET STINGRAY BLUE Doors: 2
+   Ben Age: 57
+      Car: FORD RAPTOR RED Doors: 4
+
+Department: PROGRAMMER
+  Count: 1
+   Teddy Age: 17
+      Car: CHEVROLET CAMARO BLACK Doors: 4
+      Spaceship:SPACEX DRAGON RED Engine:LIGHT_SPEED Entry Points: 2
+
+Department: SALES
+  Count: 4
+   Sable Age: 32
+      Car: DODGE RAM WHITE Doors: 2
+   Donald Age: 36
+      Car: FORD EXPEDITION WHITE Doors: 4
+      Spaceship:SPACEX STARSHIP RED Engine:WARP_DRIVE Entry Points: 4
+   Dustin Age: 36
+      Car: FORD RAPTOR SILVER Doors: 4
+      Submarine: THYSSENKRUPP TYPHOON SILVER Engine: DIESEL Entry Points: 15
+   Sable Age: 47
+      Car: DODGE RAM BLACK Doors: 5
+      Plane: GENERALDYNAMICS F16 SILVER Engine: JET Entry Points: 1
+      Plane: GENERALDYNAMICS F16 CAMO Engine: JET Entry Points: 1
+      Plane: GRUMMAN COMMERCIAL WHITE Engine: JET Entry Points: 4
+      Plane: LOCKHEED F35 SILVER Engine: JET Entry Points: 1
+      Plane: BOEING B747 SILVER Engine: JET Entry Points: 5
+
+Department: CAPTAIN
+  Count: 1
+   Jean-LucPicard Age: 59
+      Spaceship:STARFLEET ENTERPRISE SILVER Engine:WARP_DRIVE Entry Points: 10
+
