@@ -6,47 +6,47 @@ File processed
 ascending order
 Department: ACCOUNTANT
   Count: 1
-   Sable Age: 26
+   SableAge: 26
       Car: GMC PICKUP WHITE Doors: 2
 
 Department: ANALYSIST
   Count: 3
-   Betty Age: 23
+   BettyAge: 23
       Car: CHEVROLET STINGRAY RED Doors: 2
-   Kevin Age: 23
+   KevinAge: 23
       Car: FORD EXPEDITION BLUE Doors: 5
       Spaceship:SPACEX DRAGON BLACK Engine:LIGHT_SPEED Entry Points: 3
       Submarine: NAVALGROUP VIRGINIA BLUE Engine: NUCLEAR Entry Points: 20
-   Tom Age: 23
+   TomAge: 23
       Car: DODGE CHARGER BLACK Doors: 4
-      Submarine: NAVALGROUP TRIDENT CAMO Engine: NUCLEAR Entry Points: 10
+      Submarine: NAVALGROUP TRIDENT CAMO Engine: NUCLEAR Entry Points: 22
 
 Department: MANAGER
   Count: 3
-   Bob Age: 43
+   BobAge: 43
       Car: DODGE DEVIL ORANGE Doors: 2
-   Bob Age: 44
+   BobAge: 44
       Car: CHEVROLET STINGRAY BLUE Doors: 2
-   Ben Age: 57
+   BenAge: 57
       Car: FORD RAPTOR RED Doors: 4
 
 Department: PROGRAMMER
   Count: 1
-   Teddy Age: 17
+   TeddyAge: 17
       Car: CHEVROLET CAMARO BLACK Doors: 4
       Spaceship:SPACEX DRAGON RED Engine:LIGHT_SPEED Entry Points: 2
 
 Department: SALES
   Count: 4
-   Sable Age: 32
+   SableAge: 32
       Car: DODGE RAM WHITE Doors: 2
-   Donald Age: 36
+   DonaldAge: 36
       Car: FORD EXPEDITION WHITE Doors: 4
       Spaceship:SPACEX STARSHIP RED Engine:WARP_DRIVE Entry Points: 4
-   Dustin Age: 36
+   DustinAge: 36
       Car: FORD RAPTOR SILVER Doors: 4
       Submarine: THYSSENKRUPP TYPHOON SILVER Engine: DIESEL Entry Points: 15
-   Sable Age: 47
+   SableAge: 47
       Car: DODGE RAM BLACK Doors: 5
       Plane: GENERALDYNAMICS F16 SILVER Engine: JET Entry Points: 1
       Plane: GENERALDYNAMICS F16 CAMO Engine: JET Entry Points: 1
@@ -56,6 +56,6 @@ Department: SALES
 
 Department: CAPTAIN
   Count: 1
-   Jean-LucPicard Age: 59
+   Jean-LucPicardAge: 59
       Spaceship:STARFLEET ENTERPRISE SILVER Engine:WARP_DRIVE Entry Points: 10
 

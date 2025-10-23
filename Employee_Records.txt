@@ -24,7 +24,7 @@ Betty Analysist 23
 Chevrolet Stingray 2 Red
 Tom Analysist 23
 Dodge Charger 4  Black
-NavalGroup Trident 10 Camo
+NavalGroup Trident 22 Camo
 Betty Analysist 23
 Bob Manager 44
 Chevrolet Stingray 2 Blue
